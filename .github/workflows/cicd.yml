@@ -40,6 +40,10 @@ jobs:
       - run: echo "${{ secrets.APPLICATION }}" > ./src/main/resources/application-prod.yml
       - run: cat ./src/main/resources/application-prod.yml
 
+      # grant permission
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
       # gradle build
       - name: Build with Gradle
         run: ./gradlew build -x test
