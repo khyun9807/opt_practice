@@ -67,5 +67,5 @@ jobs:
             sudo docker stop $(sudo docker ps -q --filter "name=project")
             sudo docker rm $(sudo docker ps -aq --filter "name=project")
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_PROJECT }}
-            sudo docker run --name project -d -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_PROJECT }}
+            sudo docker run --name project -d -e SPRING_PROFILES_ACTIVE=prod -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_PROJECT }}
             sudo docker image prune -f
