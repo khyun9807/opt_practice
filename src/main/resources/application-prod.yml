@@ -15,9 +15,9 @@ jwt:
   secret-key: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCD"
   refresh-token:
     secret-key: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCD"
-    exptime: 1d
+    exptime: 23h
   access-token:
-    exptime: 3h
+    exptime: 8h
 
 management:
   endpoint:
