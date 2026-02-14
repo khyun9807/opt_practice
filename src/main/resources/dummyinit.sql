@@ -106,15 +106,15 @@ COMMIT;
    --------------------------------------------------------- */
 INSERT INTO users (id, active, name, oauth_id, user_identifier, auth_type, user_role)
 SELECT
-    n + 1 AS id,
+    n + 5 AS id,  -- 기존 1~4가 있으니 5부터
     b'1' AS active,
-    CONCAT('User_', LPAD(n + 1, 5, '0')) AS name,
-    CONCAT('kakao_', n + 1) AS oauth_id,
-    CONCAT('uid_', LPAD(n + 1, 6, '0')) AS user_identifier,
+    CONCAT('User_', LPAD(n + 5, 5, '0')) AS name,
+    CONCAT('kakao_', n + 5) AS oauth_id,
+    CONCAT('uid_', LPAD(n + 5, 6, '0')) AS user_identifier,
     'KAKAO' AS auth_type,
-    CASE WHEN n < 20 THEN 'ADMIN' ELSE 'USER' END AS user_role
+    CASE WHEN (n + 5) <= 20 THEN 'ADMIN' ELSE 'USER' END AS user_role  -- 전체 기준 1~20 ADMIN 유지
 FROM seq_1m
-WHERE n < 50000;
+WHERE n < 49996;  -- 49,996명 생성
 
 COMMIT;
 
