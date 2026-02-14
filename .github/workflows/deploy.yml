@@ -1,0 +1,139 @@
+name: Deploy (Blue-Green via Nginx)
+
+on:
+  push:
+    branches: [ "main" ]  # main 머지되면 배포
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build bootJar (skip tests)
+        # 테스트는 CI에서 보장한다고 보고, 배포는 속도 위해 스킵
+        run: ./gradlew clean bootJar -x test
+
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build & Push Docker image
+        run: |
+          IMAGE="${{ secrets.DOCKER_IMAGE }}"
+          TAG="sha-${GITHUB_SHA}"                 # 커밋 해시 태그(추적/롤백 쉬움)
+
+          docker build -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE}:latest"
+
+  deploy_blue_green:
+    runs-on: ubuntu-latest
+    needs: build_and_push
+
+    steps:
+      - name: Deploy via Nginx (jump server)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.NGINX_HOST }}        # Nginx public IP/DNS
+          username: ubuntu
+          key: ${{ secrets.SEOUL_SSH_KEY }}      # seoul-key.pem 내용 전체
+          envs: GITHUB_SHA
+          script: |
+            set -euo pipefail
+
+            # ---- 고정값 (업데이트된 Spring private IP) ----
+            SPRING1_IP="172.31.39.188"
+            SPRING2_IP="172.31.33.227"
+            UPSTREAM_FILE="/etc/nginx/conf.d/payper_upstream.conf"
+
+            # ---- 이번에 배포할 이미지 태그 ----
+            IMAGE="${{ secrets.DOCKER_IMAGE }}"
+            TAG="sha-${GITHUB_SHA}"
+
+            echo "[INFO] Deploy image: ${IMAGE}:${TAG}"
+
+            # ---- 현재 ACTIVE / STANDBY 파악 ----
+            # backup 없는 줄 = ACTIVE, backup 있는 줄 = STANDBY
+            ACTIVE_IP="$(grep -E 'server [0-9.]+:8080' "$UPSTREAM_FILE" | grep -v backup | awk '{print $2}' | sed 's/:8080//; s/;//')"
+            STANDBY_IP="$(grep -E 'server [0-9.]+:8080' "$UPSTREAM_FILE" | grep backup | awk '{print $2}' | sed 's/:8080//; s/;//')"
+
+            echo "[INFO] ACTIVE_IP=${ACTIVE_IP}"
+            echo "[INFO] STANDBY_IP=${STANDBY_IP}"
+
+            # ---- Nginx -> Spring SSH에 쓸 키 파일 체크 ----
+            if [ ! -f ~/.ssh/seoul-key.pem ]; then
+              echo "[ERROR] ~/.ssh/seoul-key.pem not found on Nginx."
+              echo "        (해결) seoul-key.pem을 Nginx ~/.ssh/로 1회 복사하고 chmod 600 하세요."
+              exit 1
+            fi
+            chmod 600 ~/.ssh/seoul-key.pem
+
+            # ---- 대기 서버에 배포하는 함수 ----
+            deploy_to_spring() {
+              local TARGET_IP="$1"
+              echo "[INFO] Deploying to STANDBY spring: ${TARGET_IP}"
+
+              ssh -i ~/.ssh/seoul-key.pem -o StrictHostKeyChecking=no ubuntu@"${TARGET_IP}" "
+                set -euo pipefail
+
+                # private 이미지면 login 필요 (public이면 생략 가능)
+                echo '${{ secrets.DOCKERHUB_TOKEN }}' | sudo docker login \
+                  -u '${{ secrets.DOCKERHUB_USERNAME }}' --password-stdin
+
+                sudo docker pull '${IMAGE}:${TAG}'
+
+                sudo docker stop app || true
+                sudo docker rm app || true
+
+                sudo docker run -d --name app \
+                  --restart unless-stopped \
+                  --env-file /home/ubuntu/app/.env \
+                  -p 8080:8080 \
+                  '${IMAGE}:${TAG}'
+
+                # 헬스 체크 (최대 60초)
+                for i in {1..30}; do
+                  if curl -fsS http://localhost:8080/actuator/health > /dev/null; then
+                    echo '[INFO] Health check OK'
+                    exit 0
+                  fi
+                  sleep 2
+                done
+
+                echo '[ERROR] Health check FAILED'
+                sudo docker logs app || true
+                exit 1
+              "
+            }
+
+            # ---- 무조건 STANDBY에만 배포 ----
+            deploy_to_spring "${STANDBY_IP}"
+
+            # ---- (중요) upstream 스위치: heredoc 대신 printf로 생성 (들여쓰기 경고 해결) ----
+            echo "[INFO] Switching Nginx upstream..."
+            printf "upstream payper_backend {\n    server %s:8080 max_fails=3 fail_timeout=10s;\n    server %s:8080 max_fails=3 fail_timeout=10s backup;\n}\n" \
+              "${STANDBY_IP}" "${ACTIVE_IP}" | sudo tee "${UPSTREAM_FILE}" >/dev/null
+
+            # ---- 설정 검사 후 무중단 reload (A: systemctl) ----
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            echo "[SUCCESS] Blue-Green switch done. New ACTIVE=${STANDBY_IP}"
