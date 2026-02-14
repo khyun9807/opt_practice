@@ -61,7 +61,7 @@ TRUNCATE TABLE post_like;
 TRUNCATE TABLE post_bookmark;
 TRUNCATE TABLE comments;
 TRUNCATE TABLE posts;
-TRUNCATE TABLE users;
+/*TRUNCATE TABLE users;*/
 TRUNCATE TABLE merchant;
 TRUNCATE TABLE category;
 
@@ -308,6 +308,8 @@ UPDATE comments c
     SET c.like_count = COALESCE(t.cnt, 0);
 
 COMMIT;
+
+
 
 -- 마무리
 SET SESSION foreign_key_checks = 1;
