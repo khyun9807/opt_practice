@@ -17,7 +17,7 @@ jwt:
     secret-key: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCD"
     exptime: 1d
   access-token:
-    exptime: 8h
+    exptime: 3h
 
 management:
   endpoint:
