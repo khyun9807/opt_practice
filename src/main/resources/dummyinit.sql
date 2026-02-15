@@ -9,7 +9,7 @@
    - post_bookmark:300,000
    - comment_like:500,000
    ========================================================= */
-
+/**/
 SET SESSION sql_safe_updates = 0;
 SET SESSION foreign_key_checks = 0;
 SET SESSION unique_checks = 0;
