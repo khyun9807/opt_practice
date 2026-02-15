@@ -20,6 +20,9 @@ jwt:
     exptime: 8h
 
 management:
+  server:
+    port: 9090
+    address: 0.0.0.0
   endpoint:
     health:
       show-details: always
