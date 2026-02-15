@@ -112,7 +112,7 @@ jobs:
 
                 # 헬스 체크 (최대 60초)
                 for i in {1..30}; do
-                  if curl -fsS http://localhost:8080/actuator/health > /dev/null; then
+                  if curl -fsS http://localhost:9090/actuator/health > /dev/null; then
                     echo '[INFO] Health check OK'
                     exit 0
                   fi
