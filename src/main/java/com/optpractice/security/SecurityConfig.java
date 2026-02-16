@@ -81,6 +81,7 @@ public class SecurityConfig {
         );
         adminRequestMatcher = new OrRequestMatcher(
                 requestMatcher.matcher(HttpMethod.GET, "/admin/**"),
+
                 requestMatcher.matcher(HttpMethod.POST, "/api/v1/merchants"),
                 requestMatcher.matcher(HttpMethod.PUT, "/api/v1/merchants/**"),
                 requestMatcher.matcher(HttpMethod.POST, "/api/v1/categories"),
