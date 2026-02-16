@@ -116,7 +116,8 @@ public class PostService {
 
         Page<Post> posts;
         if(merchantId == null&&type == null) {
-            posts = postRepository.findActivePosts(pageable);        }
+            posts = postRepository.findActivePosts(pageable);
+        }
         else if(merchantId==null){
             posts = postRepository.findActivePostsByType(type, pageable);
         }
