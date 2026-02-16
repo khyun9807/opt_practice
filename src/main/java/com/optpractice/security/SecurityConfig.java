@@ -58,6 +58,7 @@ public class SecurityConfig {
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/merchants/**"),
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/categories/**"),
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/comments/*/replies"),
+
                 requestMatcher.matcher("/actuator/**")
         );
         // 인증이 필요한 요청
