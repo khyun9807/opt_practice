@@ -46,10 +46,13 @@ public class SecurityConfig {
 
         permitAllRequestMatcher = new OrRequestMatcher(
                 //requestMatcher.matcher("/**"),
+
                 requestMatcher.matcher(HttpMethod.GET, "/swagger-ui/**"),
                 requestMatcher.matcher(HttpMethod.GET, "/v3/api-docs/**"),
                 requestMatcher.matcher(HttpMethod.GET, "/favicon.ico"),
+
                 requestMatcher.matcher("/auth/**"),
+
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/posts/**"),
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/comments/*/replies"),
                 requestMatcher.matcher(HttpMethod.GET, "/api/v1/merchants/**"),
