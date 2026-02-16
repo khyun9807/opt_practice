@@ -36,17 +36,71 @@ public interface PostRepository extends JpaRepository<Post, Long> {
           join fetch p.author
           join fetch p.merchant
           where p.isDeleted = false
-            and (:merchantId IS NULL or p.merchant.id = :merchantId)
-            and (:type IS NULL or p.type = :type)
         """,
         countQuery = """
           select count(p) from Post p
           where p.isDeleted = false
-            and (:merchantId IS NULL or p.merchant.id = :merchantId)
-            and (:type IS NULL or p.type = :type)
         """
     )
-    Page<Post> findActivePostsByCondition(
+    Page<Post> findActivePosts(
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+          select p from Post p
+          join fetch p.author
+          join fetch p.merchant
+          where p.isDeleted = false
+            and (p.merchant.id = :merchantId)
+        """,
+            countQuery = """
+          select count(p) from Post p
+          where p.isDeleted = false
+            and (p.merchant.id = :merchantId)
+        """
+    )
+    Page<Post> findActivePostsByMerchant(
+            @Param("merchantId") Long merchantId,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+          select p from Post p
+          join fetch p.author
+          join fetch p.merchant
+          where p.isDeleted = false
+            and (p.type = :type)
+        """,
+            countQuery = """
+          select count(p) from Post p
+          where p.isDeleted = false
+            and (p.type = :type)
+        """
+    )
+    Page<Post> findActivePostsByType(
+            @Param("type") PostType type,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+          select p from Post p
+          join fetch p.author
+          join fetch p.merchant
+          where p.isDeleted = false
+            and (p.merchant.id = :merchantId)
+            and (p.type = :type)
+        """,
+            countQuery = """
+          select count(p) from Post p
+          where p.isDeleted = false
+            and (p.merchant.id = :merchantId)
+            and (p.type = :type)
+        """
+    )
+    Page<Post> findActivePostsByMerchantAndType(
             @Param("merchantId") Long merchantId,
             @Param("type") PostType type,
             Pageable pageable

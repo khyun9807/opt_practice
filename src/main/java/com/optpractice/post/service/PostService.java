@@ -113,7 +113,20 @@ public class PostService {
      */
     @Transactional(readOnly = true)
     public Page<PostResponse.PostList> getPosts(Long merchantId, PostType type, Pageable pageable) {
-        Page<Post> posts = postRepository.findActivePostsByCondition(merchantId, type, pageable);
+
+        Page<Post> posts;
+        if(merchantId == null&&type == null) {
+            posts = postRepository.findActivePosts(pageable);        }
+        else if(merchantId==null){
+            posts = postRepository.findActivePostsByType(type, pageable);
+        }
+        else if(type==null){
+            posts = postRepository.findActivePostsByMerchant(merchantId, pageable);
+        }
+        else{
+            posts = postRepository.findActivePostsByMerchantAndType(merchantId, type, pageable);
+        }
+
 
         log.info("post 조회 완료 {}", posts);
         return posts.map(PostResponse.PostList::from);
