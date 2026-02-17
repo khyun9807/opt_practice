@@ -109,7 +109,7 @@ jobs:
                   -p 8080:8080 \
                   -p 9090:9090 \
                   -v /opt/scouter/agent.java:/scouter/agent.java \
-                  -e JAVA_TOOL_OPTIONS="-javaagent:/scouter/agent.java/scouter.agent.jar -Dscouter.config=/scouter/agent.java/conf/scouter.conf" \
+                  --env "JAVA_TOOL_OPTIONS=-javaagent:/scouter/agent.java/scouter.agent.jar -Dscouter.config=/scouter/agent.java/conf/scouter.conf" \
                   '${IMAGE}:${TAG}'
 
                 # 헬스 체크 (최대 60초)
