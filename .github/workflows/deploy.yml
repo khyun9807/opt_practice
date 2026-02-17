@@ -94,25 +94,36 @@ jobs:
               ssh -i ~/.ssh/seoul-key.pem -o StrictHostKeyChecking=no ubuntu@"${TARGET_IP}" "
                 set -euo pipefail
 
+                # (선택) Scouter agent 파일 존재 확인 (없으면 컨테이너가 떠도 agent가 안 붙을 수 있음)
+                if [ ! -f /opt/scouter/agent.java/scouter.agent.jar ]; then
+                  echo '[ERROR] /opt/scouter/agent.java/scouter.agent.jar not found'
+                  exit 1
+                fi
+                if [ ! -f /opt/scouter/agent.java/conf/scouter.conf ]; then
+                  echo '[ERROR] /opt/scouter/agent.java/conf/scouter.conf not found'
+                  exit 1
+                fi
+
                 # private 이미지면 login 필요 (public이면 생략 가능)
                 echo '${{ secrets.DOCKERHUB_TOKEN }}' | sudo docker login \
                   -u '${{ secrets.DOCKERHUB_USERNAME }}' --password-stdin
 
                 sudo docker pull '${IMAGE}:${TAG}'
 
-                sudo docker stop app || true
-                sudo docker rm app || true
+                # ✅ 없을 수도 있으니 rm -f 로 한 번에 정리 (에러 무시)
+                sudo docker rm -f app >/dev/null 2>&1 || true
 
+                # ✅ 핵심 수정: JAVA_TOOL_OPTIONS 값을 \"...\" 로 쓰지 말고 '...' 로 감싸서 따옴표 깨짐 방지
                 sudo docker run -d --name app \
                   --restart unless-stopped \
                   --env-file /home/ubuntu/app/.env \
                   -p 8080:8080 \
                   -p 9090:9090 \
                   -v /opt/scouter/agent.java:/scouter/agent.java \
-                  --env "JAVA_TOOL_OPTIONS=-javaagent:/scouter/agent.java/scouter.agent.jar -Dscouter.config=/scouter/agent.java/conf/scouter.conf" \
+                  --env 'JAVA_TOOL_OPTIONS=-javaagent:/scouter/agent.java/scouter.agent.jar -Dscouter.config=/scouter/agent.java/conf/scouter.conf' \
                   '${IMAGE}:${TAG}'
 
-                # 헬스 체크 (최대 60초)
+                # 헬스 체크 (최대 60초) - actuator 포트 9090 기준
                 for i in {1..30}; do
                   if curl -fsS http://localhost:9090/actuator/health > /dev/null; then
                     echo '[INFO] Health check OK'
@@ -122,7 +133,7 @@ jobs:
                 done
 
                 echo '[ERROR] Health check FAILED'
-                sudo docker logs app || true
+                sudo docker logs --tail=200 app || true
                 exit 1
               "
             }
@@ -130,12 +141,12 @@ jobs:
             # ---- 무조건 STANDBY에만 배포 ----
             deploy_to_spring "${STANDBY_IP}"
 
-            # ---- (중요) upstream 스위치: heredoc 대신 printf로 생성 (들여쓰기 경고 해결) ----
+            # ---- upstream 스위치: printf로 생성 ----
             echo "[INFO] Switching Nginx upstream..."
             printf "upstream payper_backend {\n    server %s:8080 max_fails=3 fail_timeout=10s;\n    server %s:8080 max_fails=3 fail_timeout=10s backup;\n}\n" \
               "${STANDBY_IP}" "${ACTIVE_IP}" | sudo tee "${UPSTREAM_FILE}" >/dev/null
 
-            # ---- 설정 검사 후 무중단 reload (A: systemctl) ----
+            # ---- 설정 검사 후 무중단 reload ----
             sudo nginx -t
             sudo systemctl reload nginx
 
