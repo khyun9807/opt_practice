@@ -29,7 +29,10 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_posts_deleted_created", columnList = "is_deleted, created_at"),
                 @Index(name = "idx_posts_deleted_likecnt", columnList = "is_deleted, like_count"),
                 @Index(name = "idx_posts_deleted_viewcnt", columnList = "is_deleted, view_count"),
-                @Index(name = "idx_posts_deleted_commentcnt", columnList = "is_deleted, comment_count")
+                @Index(name = "idx_posts_deleted_commentcnt", columnList = "is_deleted, comment_count"),
+
+                @Index(name = "idx_posts_deleted", columnList = "is_deleted"),
+                @Index(name = "idx_posts_deleted_merchant_type", columnList = "is_deleted, merchant, type")
         }
 )
 public class Post extends BaseTimeEntity {
